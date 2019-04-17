@@ -5,6 +5,12 @@
     - "Please update your inventories"
   when: kubernetes_master_kubeadm_config is defined
 
+- name: generate a kubeadm token
+  command: "/usr/bin/kubeadm token create --config /etc/kubernetes/kubeadm.conf --kubeconfig /etc/kubernetes/admin.conf"
+  register: generated_token
+  run_once: True
+  delegate_to: "{{ groups['primary_master']|first }}"
+
 - include_tasks: install.yml
   when: wardroom_action == 'install'
 
