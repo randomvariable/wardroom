@@ -1,6 +1,5 @@
 ---
 - import_playbook: pre.yml
-
 - name: build image
   hosts: all
   become: yes

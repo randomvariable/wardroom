@@ -1,3 +1,5 @@
 ---
 dependencies:
   - { role: kubernetes-common }
+galaxy_info:
+  author: The Wardroom Authors
