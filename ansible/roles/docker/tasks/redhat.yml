@@ -2,9 +2,10 @@
 - name: hold containerd version
   lineinfile:
     path: "/etc/yum/pluginconf.d/versionlock.list"
-    line: "0:{{docker_package}}-{{docker_redhat_version}}"
+    line: "3:{{docker_package}}-{{docker_version}}.*"
+    regexp: "{{docker_package}}"
     create: yes
     mode: '0644'
     owner: root
     group: root
-  when: docker_redhat_version is defined
+  when: docker_version is defined

@@ -5,7 +5,11 @@
     cache_valid_time: 3600
 
 - name: reset grub on libvirt
-  shell: echo "set grub-pc/install_devices /dev/vda" | debconf-communicate
+  debconf:
+    name: grub-pc
+    question: grub-pc/install_devices
+    value: /dev/vda
+    vtype: text
   when: ansible_system_vendor == "QEMU"
 
 - name: perform a dist-upgrade

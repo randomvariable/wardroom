@@ -2,7 +2,8 @@
 - name: hold containerd version
   lineinfile:
     path: "/etc/yum/pluginconf.d/versionlock.list"
-    line: "0:{{containerd_package}}-{{containerd_version}}"
+    line: "0:{{containerd_package}}-{{containerd_version}}.*"
+    regexp: "0:{{containerd_package}}"
     create: yes
     mode: '0644'
     owner: root

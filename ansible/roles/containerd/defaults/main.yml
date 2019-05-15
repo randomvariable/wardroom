@@ -43,4 +43,4 @@ containerd_configuration:
           docker.io:
             endpoint: "{{containerd_registry_mirrors}}"
 
-containerd_version: 1.12*
+containerd_version: "1.12"

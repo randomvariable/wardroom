@@ -1,28 +1,4 @@
-- name: directory.etc.selinux.systemd-modules-load
-  file:
-    path: /etc/selinux/systemd-modules-load
-    state: directory
-
-- name: selinux.type-enforcement.systemd-modules-load
-  copy:
-    src: "{{ role_path }}/files/etc/selinux/systemd-modules-load/systemd-modules-load.te"
-    dest: /etc/selinux/systemd-modules-load/systemd-modules-load.te
-    owner: root
-    group: root
-    mode: 0644
-  register: selinux_type_enforcement_systemd_modules_load
-
-- name: selinux.module.systemd-modules-load
-  shell: |
-    checkmodule -M -m -o /etc/selinux/{{item}}.mod /etc/selinux/{{item}}.te && \
-      semodule_package -o /etc/selinux/{{item}}.pp -m /etc/selinux/{{item}}.mod && \
-      /usr/sbin/semodule -i /etc/selinux/{{item}}.pp
-  with_items:
-    - "systemd-modules-load/systemd-modules-load"
-  when: selinux_type_enforcement_systemd_modules_load.changed
-
-
-- name: systemd.system.kubeadm-selinux.service
+- name: install kubeadm-selinux service
   template:
     src: etc/systemd/system/kubeadm-selinux.service.j2
     dest: /etc/systemd/system/kubeadm-selinux.service
@@ -30,7 +6,7 @@
     group: root
     mode: 0644
 
-- name: systemd.system.kubeadm-selinux.timer
+- name: install kubeadm-selinux timer
   copy:
     src: "{{ role_path }}/files/etc/systemd/system/kubeadm-selinux.timer"
     dest: "/etc/systemd/system/kubeadm-selinux.timer"
@@ -38,12 +14,12 @@
     group: root
     mode: 0644
 
-- name: directory.etc.selinux.containers
+- name: create directory for kubernetes specific policies
   file:
     path: /etc/selinux/containers
     state: directory
 
-- name: selinux.type-enforcement.containers
+- name: copy container type enforcements
   copy:
     src: "{{ role_path }}/files/etc/selinux/containers/{{item}}.te"
     dest: "/etc/selinux/containers/{{item}}.te"
@@ -55,7 +31,7 @@
     - container_bpf
     - container_cert
 
-- name: selinux.module
+- name: install container type enforcements into selinux
   shell: |
     checkmodule -M -m -o /etc/selinux/{{item}}.mod /etc/selinux/{{item}}.te && \
       semodule_package -o /etc/selinux/{{item}}.pp -m /etc/selinux/{{item}}.mod && \
@@ -65,29 +41,27 @@
     - "containers/container_cert"
   when: selinux_type_enforcement_containers.changed
 
-
-- name: selinux.boolean.container_connect_any
+- name: allow network connectivity for containers
   seboolean:
     name: container_connect_any
     state: yes
     persistent: yes
 
-
-- name: selinux.fcontext.set.container_file_t
+- name: give permission for containers to write to directories used by kubeadm
   sefcontext:
     target: "{{item}}(/.*)?"
     setype: container_file_t
     state: present
   with_items: "{{kubernetes_selinux_container_file_t}}"
 
-- name: service.kubeadm-selinux
+- name: start the kubeadm-selinux service
   systemd:
     name: kubeadm-selinux
     state: started
     enabled: yes
     daemon_reload: yes
 
-- name: timer.kubeadm-selinux
+- name: enable the kubeadm-selinux timer
   systemd:
     name: kubeadm-selinux.timer
     state: started
