@@ -1,0 +1,9 @@
+---
+- name: lock containerd version
+  copy:
+    dest: "/etc/apt/preferences.d/containerd"
+    content: |
+      Package: {{containerd_package}}
+      Pin: version {{containerd_version}}*
+      Pin-Priority: 1100
+  when: containerd_version is defined

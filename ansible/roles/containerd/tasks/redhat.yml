@@ -1,0 +1,10 @@
+---
+- name: hold containerd version
+  lineinfile:
+    path: "/etc/yum/pluginconf.d/versionlock.list"
+    line: "0:{{containerd_package}}-{{containerd_version}}"
+    create: yes
+    mode: '0644'
+    owner: root
+    group: root
+  when: containerd_version is defined

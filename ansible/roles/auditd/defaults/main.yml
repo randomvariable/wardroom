@@ -1,0 +1,4 @@
+auditd_rulesets__default:
+- 41-containers
+- 42-injection
+- 43-module-load

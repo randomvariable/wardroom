@@ -1,0 +1,7 @@
+[Unit]
+Description=Rotate auditd logs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/service auditd rotate
+

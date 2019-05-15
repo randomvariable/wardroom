@@ -1,19 +1,47 @@
 ---
+
+- name: copy kubernetes GPG key
+  copy:
+    src: "{{ role_path }}/files/etc/pki/rpm-gpg/RPM-GPG-KEY-{{item}}"
+    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-{{item}}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - kubernetes
+    - kubernetes-packages
+  when: kubernetes_install_upstream_gpgkey | bool
+
 - name: add the kubernetes yum repo key
+  rpm_key:
+    state: present
+    key: /etc/pki/rpm-gpg/RPM-GPG-KEY-{{item}}
+  with_items:
+    - kubernetes
+    - kubernetes-packages
+  when: kubernetes_install_upstream_gpgkey | bool
+
+- name: add the kubernetes yum repo
   yum_repository:
     name: kubernetes
     description: the kubernetes yum repo
     baseurl: "{{ kubernetes_yum_baseurl }}"
     gpgcheck: True
+    repo_gpgcheck: True
     gpgkey: "{{ kubernetes_yum_gpgkey }}"
 
-- name: install the kubernetes yum packages
-  yum:
-    allow_downgrade: True
-    name:
-      - "kubelet-{{ kubernetes_version | kube_platform_version('redhat') }}"
-      - "kubeadm-{{ kubernetes_version | kube_platform_version('redhat') }}"
-      - "kubectl-{{ kubernetes_version | kube_platform_version('redhat') }}"
-      - "kubernetes-cni-{{kubernetes_cni_version | kube_platform_version('redhat')}}"
-  retries: 5
-  delay: 5
+- name: hold kubernetes version
+  lineinfile:
+    path: "/etc/yum/pluginconf.d/versionlock.list"
+    line: "0:{{item}}"
+    create: yes
+    mode: '0644'
+    owner: root
+    group: root
+  when: kubernetes_version is defined
+  with_items:
+  - "cri-tools-{{kubernetes_version}}*"
+  - "kubelet-{{kubernetes_version}}*"
+  - "kubeadm-{{kubernetes_version}}*"
+  - "kubectl-{{kubernetes_version}}*"
+  - "kubernetes-cni-{{kubernetes_cni_version}}*"

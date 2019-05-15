@@ -1,0 +1,46 @@
+containerd_auditd_support: False
+containerd_cgroup_driver: "systemd"
+containerd_max_container_log_line_size: 16384
+containerd_sandbox_image: "k8s.gcr.io/pause:3.1"
+containerd_selinux: False
+containerd_package: containerd.io
+
+containerd_registry_mirrors:
+ - https://registry-1.docker.io
+
+containerd_service_limits:
+  Service:
+    LimitCPU: infinity
+    LimitFSIZE: infinity
+    LimitDATA: infinity
+    LimitSTACK: infinity
+    LimitCORE: infinity
+    LimitRSS: infinity
+    LimitNOFILE: infinity
+    LimitAS: infinity
+    LimitNPROC: infinity
+    LimitMEMLOCK: infinity
+    LimitLOCKS: infinity
+    LimitSIGPENDING: infinity
+    LimitMSGQUEUE: infinity
+    LimitNICE: 0
+    LimitRTPRIO: infinity
+    LimitRTTIME: infinity
+
+containerd_configuration:
+  metrics:
+    address: '127.0.0.1:1338'
+    grpc_histogram: true
+  plugins:
+    cri:
+      enable_selinux: "{{containerd_selinux}}"
+      sandbox_image: "{{containerd_sandbox_image}}"
+      systemd_cgroup: "{{containerd_cgroup_driver == 'systemd'}}"
+      enable_tls_streaming: true
+      max_container_log_line_size: "{{containerd_max_container_log_line_size}}"
+      registry:
+        mirrors:
+          docker.io:
+            endpoint: "{{containerd_registry_mirrors}}"
+
+containerd_version: 1.12*

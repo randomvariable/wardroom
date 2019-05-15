@@ -1,0 +1,31 @@
+---
+- name: holding directory for GPG keys
+  file:
+    path: /etc/apt/import.gpg.d
+    state: directory
+
+- name: copy GPG key
+  copy:
+    src: "{{ role_path }}/files/etc/apt/import.gpg.d/APT-GPG-KEY-docker-ce"
+    dest: "/etc/apt/import.gpg.d/APT-GPG-KEY-docker-ce"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: add docker apt key
+  apt_key:
+    file: /etc/apt/import.gpg.d/APT-GPG-KEY-docker-ce
+
+- name: add docker apt repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution|lower}} {{ ansible_distribution_release|lower }} stable"
+  register: docker_repository
+
+- name: Update repositories cache
+  apt:
+    update_cache: yes
+  when: docker_repository.changed
+  register: docker_repository_update
+  until: docker_repository_update is success
+  retries: 5
+  delay: 5

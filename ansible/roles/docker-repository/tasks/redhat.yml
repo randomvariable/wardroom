@@ -1,0 +1,32 @@
+---
+- name: Set docker_os_distribution fact if RHEL family
+  set_fact: docker_os_distribution="centos"
+  when: ansible_distribution != "Fedora"
+
+- name: Set docker_os_distribution fact if Fedora
+  set_fact: docker_os_distribution="fedora"
+  when: ansible_distribution == "Fedora"
+
+- name: copy GPG key
+  copy:
+    src: "{{ role_path }}/files/etc/pki/rpm-gpg/RPM-GPG-KEY-docker-ce"
+    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-docker-ce"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: import rpm gpg keys
+  rpm_key:
+    state: present
+    key: /etc/pki/rpm-gpg/RPM-GPG-KEY-{{item}}
+  with_items:
+    - docker-ce
+
+- name: add docker repo
+  yum_repository:
+    name: docker
+    description: Docker YUM repo
+    baseurl: "https://download.docker.com/linux/{{docker_os_distribution}}/{{docker_distribution_release_version}}/$basearch/{{docker_channel}}/"
+    gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-docker-ce"
+    gpgcheck: true
+    state: present

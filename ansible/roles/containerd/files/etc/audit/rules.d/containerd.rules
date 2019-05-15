@@ -1,0 +1,6 @@
+-w /etc/containerd/ -p rwxa -k containerd
+-w /etc/containerd/containerd.toml -p rwxa -k containerd
+-w /lib/systemd/system/containerd.service -p rwxa -k containerd
+-w /usr/bin/containerd -p rwxa -k containerd
+-w /usr/bin/containerd-shim -p rwxa -k containerd
+-w /var/lib/containerd/ -p rwxa -k containerd

@@ -1,0 +1,7 @@
+ntp_servers:
+- time1.google.com
+- time2.google.com
+- time3.google.com
+- time4.google.com
+
+ntp_service: chronyd

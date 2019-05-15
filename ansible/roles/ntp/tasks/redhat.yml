@@ -1,0 +1,4 @@
+- name: set facts
+  set_fact:
+    ntp_configuration_path: "/etc/chrony.conf"
+    ntp_service: "chronyd"

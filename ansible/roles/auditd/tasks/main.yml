@@ -1,0 +1,40 @@
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: install auditd
+  package:
+    name: "{{auditd_package}}"
+
+- name: copy auditd rules
+  copy:
+    src: "{{auditd_rule_package_prefix}}/{{item}}.rules"
+    remote_src: true
+    dest: "/etc/audit/rules.d/{{item}}.rules"
+  with_items: "{{auditd_rulesets | default(auditd_rulesets__default)}}"
+
+- name: setup auditd service
+  copy:
+    src: "{{ role_path }}/files/etc/systemd/system/auditd-rotate.service"
+    dest: "/etc/systemd/system/auditd-rotate.service"
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload auditd-rotate
+
+- name: setup auditd timer
+  copy:
+    src: "{{ role_path }}/files/etc/systemd/system/auditd-rotate.timer"
+    dest: "/etc/systemd/system/auditd-rotate.timer"
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload auditd-rotate
+
+- name: start automatic rotation
+  service:
+    name: auditd-rotate
+    enabled: true
+    daemon_reload: yes

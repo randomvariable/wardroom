@@ -1,8 +1,18 @@
 ---
 - name: add epel repo
-  yum:
-    name: "{{ common_redhat_epel_rpm }}"
+  package:
+    name: epel-release
   when: ansible_distribution != "Fedora"
+
+- name: install versionlock (rhel)
+  package:
+    name: yum-plugin-versionlock
+  when: ansible_distribution != "Fedora"
+
+- name: install versionlock (fedora)
+  package:
+    name: python3-dnf-plugin-versionlock
+  when: ansible_distribution == "Fedora"
 
 - name: perform a yum update
   yum:
@@ -17,11 +27,6 @@
 - name: install extra rpms
   yum:
     name: "{{ common_extra_rpms }}"
-
-- name: load br_netfilter kernel module
-  modprobe:
-    name: br_netfilter
-    state: present
 
 - name: ensure firewalld is running
   systemd:

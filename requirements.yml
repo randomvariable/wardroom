@@ -1,0 +1,2 @@
+- name: jtyr.config_encoder_filters
+  src: https://github.com/jtyr/ansible-config_encoder_filters.git

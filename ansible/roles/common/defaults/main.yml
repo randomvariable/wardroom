@@ -1,6 +1,6 @@
 ---
 common_enable: True
-common_upgrade_base: False
+common_upgrade_base: True
 common_rpms:
 - yum-utils
 - python2-pip
@@ -27,5 +27,5 @@ common_debs:
 - nfs-client
 - cloud-utils
 - dnsutils
+- linux-generic-hwe-{{ansible_distribution_version}}
 common_extra_debs: []
-common_redhat_epel_rpm: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"

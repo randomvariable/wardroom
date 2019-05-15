@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  author: The Wardroom Authors
+dependencies:
+  - jtyr.config_encoder_filters
+

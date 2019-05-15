@@ -1,9 +1,45 @@
 ---
+- name: install and configure containerd
+  include_role:
+    name: containerd
+  vars:
+    containerd_service_limits: "{{docker_service_limits}}"
+
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
+
+- name: install containerd
+  package:
+    name: "docker-ce"
+
+- name: configure audit rules for docker
+  copy:
+    src: "{{ role_path }}/files/etc/audit/rules.d/docker.rules"
+    dest: "/etc/audit/rules.d/docker.rules"
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload auditd
+  when: docker_auditd_support|default(false)|bool == true
+
+- name: set CRI endpoint to docker
+  copy:
+    src: "{{ role_path }}/files/etc/profile.d/99-docker.sh"
+    dest: "/etc/profile.d/99-docker.sh"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: install bash completion
+  copy:
+    src: "{{ role_path }}/files/etc/bash_completion.d/docker.bash"
+    dest: "/etc/bash_completion.d/docker.bash"
+    owner: root
+    group: root
+    mode: 0644
 
 - name: create docker directory
   file:
@@ -11,15 +47,34 @@
     state: directory
 
 - name: configure the docker daemon
-  template:
+  copy:
     dest: /etc/docker/daemon.json
-    src: etc/docker/daemon.json
+    content: "{{docker_configuration | encode_json}}"
   notify:
     - restart docker
 
+- name: create systemd directories
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+  - /etc/systemd/system
+  - /etc/systemd/system/docker.service.d
+
+- name: override docker limits
+  copy:
+    dest: "/etc/systemd/system/docker.service.d/10-limits.conf"
+    content: "{{docker_service_limits | encode_ini}}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart docker
+
 - meta: flush_handlers
 
-- name: create a service.d directory for config
-  file:
-    dest: /etc/systemd/system/docker.service.d
-    state: directory
+- name: start docker service
+  service:
+    name: docker
+    enabled: true
+    state: started
+

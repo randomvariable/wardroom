@@ -1,0 +1,75 @@
+---
+- name: set up docker repository
+  include_role:
+    name: docker-repository
+
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: install containerd
+  package:
+    name: "{{containerd_package}}"
+
+- name: configure auditd
+  include_role:
+    name: auditd
+  when: containerd_auditd_support|default(false)|bool == true
+
+- name: containerd audit rules
+  copy:
+    src: "{{ role_path }}/files/etc/audit/rules.d/containerd.rules"
+    dest: "/etc/audit/rules.d/containerd.rules"
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload auditd
+  when: containerd_auditd_support|default(false)|bool == true
+
+- name: set CRI endpoint to containerd
+  copy:
+    src: "{{ role_path }}/files/etc/profile.d/98-containerd.sh"
+    dest: "/etc/profile.d/98-containerd.sh"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: containerd configuration
+  copy:
+    content: "{{ containerd_configuration | encode_toml }}"
+    dest: "/etc/containerd/config.toml"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart containerd
+
+- name: systemd.system.containerd.directory
+  file:
+    path: /etc/systemd/system/containerd.service.d
+    state: directory
+
+- name: create systemd directories
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+  - /etc/systemd/system
+  - /etc/systemd/system/containerd.service.d
+
+- name: override containerd limits
+  copy:
+    dest: "/etc/systemd/system/containerd.service.d/10-limits.conf"
+    content: "{{ containerd_service_limits | encode_ini }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart containerd
+
+- name: start containerd service
+  service:
+    name: containerd
+    enabled: true
+    state: started
+    daemon_reload: yes

@@ -1,15 +1,5 @@
 ---
-- name: comment out any swap in fstab
-  lineinfile:
-    path: '/etc/fstab'
-    regexp: '^(.*\s+none\s+swap.*)'
-    line: '# removed by wardroom \1'
-    backrefs: yes
-  when: kubernetes_common_disable_swap|bool == True
 
-- name: disable swap
-  command: swapoff -a
-  when: kubernetes_common_disable_swap|bool == True
 
 - name: update /etc/hosts to include cluster fqdn
   lineinfile:

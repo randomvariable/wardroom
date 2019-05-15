@@ -1,0 +1,14 @@
+- name: get audit version
+  command: /bin/rpm -qv audit --qf "%{n}-%{v}"
+  args:
+    warn: false
+  changed_when: false
+  register: audit_version
+
+- name: set facts
+  set_fact:
+    auditd_package: "audit"
+    auditd_rule_package_prefix: "/usr/share/doc/{{audit_version.stdout}}/rules"
+    cacheable: True
+
+

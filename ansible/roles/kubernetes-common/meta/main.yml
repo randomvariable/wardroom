@@ -17,4 +17,6 @@
 
 ---
 galaxy_info:
-  author: The Wardroom Authorson
+  author: The Wardroom Authors
+dependencies:
+  - { role: kubernetes }

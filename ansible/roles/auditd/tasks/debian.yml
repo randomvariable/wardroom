@@ -1,0 +1,11 @@
+- name: set facts
+  set_fact:
+    auditd_package: "auditd"
+    auditd_rule_package_prefix: "/usr/share/doc/auditd/examples/rules"
+    cacheable: True
+
+- name: set facts
+  set_fact:
+    auditd_rulesets: []
+    cacheable: True
+  when: ansible_distribution_version == "16.04"

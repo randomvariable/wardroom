@@ -1,0 +1,8 @@
+[Unit]
+Description=Restore SELinux file contexts for Kubernetes
+
+[Service]
+Type=oneshot
+{% for dir in kubernetes_selinux_container_file_t %}
+ExecStart=/usr/bin/sh -c "/usr/sbin/restorecon -R {{ dir }} || true"
+{% endfor %}

@@ -1,27 +1,10 @@
 ---
-- name: Set docker_os_distribution fact if RHEL family
-  set_fact: docker_os_distribution="centos"
-  when: ansible_distribution != "Fedora"
-
-- name: Set docker_os_distribution fact if Fedora
-  set_fact: docker_os_distribution="fedora"
-  when: ansible_distribution == "Fedora"
-
-- name: add docker repo
-  yum_repository:
-    name: docker
-    description: Docker YUM repo
-    baseurl: "https://download.docker.com/linux/{{docker_os_distribution}}/{{docker_distribution_release_version}}/$basearch/{{docker_channel}}/"
-    gpgkey: "https://download.docker.com/linux/{{docker_os_distribution}}/gpg"
-    gpgcheck: true
-    state: present
-
-- name: install Docker binaries
-  package:
-    name: "docker-ce-{{docker_redhat_version}}"
-
-- name: start docker service
-  service:
-    name: docker
-    enabled: true
-    state: started
+- name: hold containerd version
+  lineinfile:
+    path: "/etc/yum/pluginconf.d/versionlock.list"
+    line: "0:{{docker_package}}-{{docker_redhat_version}}"
+    create: yes
+    mode: '0644'
+    owner: root
+    group: root
+  when: docker_redhat_version is defined

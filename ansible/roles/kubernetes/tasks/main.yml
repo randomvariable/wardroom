@@ -1,17 +1,110 @@
 ---
-- name: set ipv4 routing
-  sysctl:
-    name: net.bridge.bridge-nf-call-iptables
-    value: 1
-    sysctl_set: yes
-    state: present
-    reload: yes
+- name: load distribution specific variables
+  include_vars:
+    dir: "{{role_path}}/defaults"
+    files_matching:
+    - "{{ ansible_distribution }}_{{ ansible_distribution_version }}.yml"
+    - "{{ ansible_os_family }}_{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_os_family }}.yml"
 
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
+
+- name: install kubernetes packages
+  package:
+    name:
+     - kubelet
+     - kubeadm
+     - kubectl
+     - kubernetes-cni
+  register: install_result
+  until: install_result is success
+  retries: 5
+  delay: 5
+
+- name: set mandatory sysctl values for Kubernetes
+  sysctl:
+    name: "{{item.name}}"
+    value: "{{item.value}}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+  - name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+  - name: net.bridge.bridge-nf-call-ip6tables
+    value: "1"
+  - name: net.ipv4.ip_forward
+    value: "1"
+  - name: vm.overcommit_memory
+    value: "1"
+  - name: "kernel.panic"
+    value: "10"
+  # Replacing -protect-kernel-defaults
+  - name: "kernel.panic_on_oops"
+    value: "1"
+
+- name: set additional sysctl values
+  sysctl:
+    name: "{{item.name}}"
+    value: "{{item.value}}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items: "{{kubernetes_sysctls}}"
+
+- name: persist required kernel modules
+  copy:
+    content: |
+      nf_conntrack
+      br_netfilter
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+    dest: /etc/modules-load.d/kubernetes.conf
+
+- name: persist extra kernel modules
+  copy:
+    content: "{{ kubernetes_kernel_modules | join(\n) }}"
+    dest: /etc/modules-load.d/kubernetes-extra.conf
+
+- name: remove swap mounts on boot
+  mount:
+    path: swap
+    state: absent
+  when: kubernetes_disable_swap|bool
+
+- name: mount eBPF filesystem
+  mount:
+    path: /sys/fs/bpf
+    state: present
+    src: bpffs
+    fstype: bpf
+    boot: yes
+  when: kubernetes_enable_bpf_mount|bool
+
+- name: swapoff
+  shell: /sbin/swapoff -a
+  when: ansible_facts["memory_mb"]["swap"]["total"] > 0 and kubernetes_disable_swap|bool
+
+- name: install ipv6-stable-secret service
+  copy:
+    src: etc/systemd/system/ipv6-stable-secret.service
+    dest: /etc/systemd/system/ipv6-stable-secret.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: enable ipv6-stable-secret
+  systemd:
+    name: ipv6-stable-secret.service
+    state: started
+    enabled: yes
+    daemon_reload: yes
 
 - name: ensure that the kubelet is running
   service:
@@ -32,6 +125,6 @@
   when: kubernetes_enable_cached_images|bool and kubernetes_cached_images|length > 0
 
 - name: set kubernetes version file
-  template:
+  copy:
     dest: /etc/kubernetes_community_ami_version
-    src: etc/kubernetes_community_ami_version
+    content: "v{{ kubernetes_version.split('-')[0] }}"

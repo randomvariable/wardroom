@@ -26,7 +26,7 @@ Vagrant.configure('2') do |config|
   end
 
   config.vm.define 'centos7' do |conf|
-    conf.vm.box = 'centos/7'
+    conf.vm.box = 'generic/centos7'
     VagrantWardroom::Providers.configure(conf)
   end
 

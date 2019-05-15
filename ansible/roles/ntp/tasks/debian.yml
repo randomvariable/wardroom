@@ -1,0 +1,21 @@
+- name: set facts
+  set_fact:
+    ntp_configuration_path: "/etc/chrony/chrony.conf"
+    cacheable: true
+
+# Replace the unreliable SysV init script on Ubuntu 16.04
+
+- name: set facts
+  set_fact:
+    ntp_service: "chrony"
+    cacheable: true
+  when: ansible_distribution_version != "16.04"
+
+- name: install chronyd service on 16.04
+  copy:
+    src: etc/systemd/system/chronyd.service
+    dest: /etc/systemd/system/chronyd.service
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_distribution_version == "16.04"

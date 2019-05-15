@@ -1,0 +1,7 @@
+- name: reload auditd
+  command: /sbin/augenrules --load
+- name: reload auditd-rotate
+  systemd:
+    daemon_reload: yes
+
+

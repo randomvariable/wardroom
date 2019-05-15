@@ -1,0 +1,12 @@
+[Unit]
+Description=Restore SELinux file contexts for Kubernetes
+
+[Timer]
+# Run every 10 seconds
+OnCalendar=*:*:0/10
+RandomizedDelaySec=2
+Persistent=true
+AccuracySec=1sec
+
+[Install]
+WantedBy=timers.target

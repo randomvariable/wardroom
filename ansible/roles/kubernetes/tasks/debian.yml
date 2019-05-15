@@ -1,33 +1,49 @@
 ---
-- name: add the kubernetes apt repo key
+- name: copy GPG key for Kubernetes
+  copy:
+    src: "{{ role_path }}/files/etc/apt/import.gpg.d/APT-GPG-KEY-kubernetes"
+    dest: "/etc/apt/import.gpg.d/APT-GPG-KEY-kubernetes"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: add kubernetes apt key
   apt_key:
-    url: "{{ kubernetes_apt_key_url }}"
-    state: present
-  register: apt_key_result
-  until: apt_key_result is success
-  retries: 5
-  delay: 5
+    file: /etc/apt/import.gpg.d/APT-GPG-KEY-kubernetes
 
 - name: add the kubernetes apt repo
   apt_repository:
     repo: "{{ kubernetes_apt_repo_string }}"
-    update_cache: True
     state: present
-  register: apt_respository_result
-  until: apt_respository_result is success
+  register: kubernetes_repository_update
+
+- name: Update repositories cache
+  apt:
+    update_cache: yes
+  when: docker_repository.changed
+  register: docker_repository_update
+  until: docker_repository_update is success
   retries: 5
   delay: 5
 
-- name: install kubernetes packages
-  apt:
-    update_cache: True
-    cache_valid_time: 60
-    name:
-      - "kubelet={{ kubernetes_version | kube_platform_version('debian') }}"
-      - "kubeadm={{ kubernetes_version | kube_platform_version('debian') }}"
-      - "kubectl={{ kubernetes_version | kube_platform_version('debian') }}"
-      - "kubernetes-cni={{kubernetes_cni_version | kube_platform_version('debian') }}"
-  register: apt_result
-  until: apt_result is success
-  retries: 5
-  delay: 5
+- name: lock kubernetes versions
+  copy:
+    dest: "/etc/apt/preferences.d/kubernetes"
+    content: |
+      Package: kubelet
+      Pin: version {{kubernetes_version}}*
+      Pin-Priority: 1100
+
+      Package: kubeadm
+      Pin: version {{kubernetes_version}}*
+      Pin-Priority: 1100
+
+      Package: kubectl
+      Pin: version {{kubernetes_version}}*
+      Pin-Priority: 1100
+
+      Package: kubernetes-cni
+      Pin: version {{kubernetes_cni_version}}*
+      Pin-Priority: 1100
+  when: kubernetes_version is defined
+

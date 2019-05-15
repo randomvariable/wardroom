@@ -1,0 +1,26 @@
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: install chrony
+  package:
+    name: "chrony"
+
+- name: chrony configuration
+  template:
+    src: "etc/chrony.conf.j2"
+    dest: "{{ntp_configuration_path}}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart chrony
+
+- name: chrony service
+  systemd:
+    name: "{{ntp_service}}"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
