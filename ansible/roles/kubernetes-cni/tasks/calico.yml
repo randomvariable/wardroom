@@ -7,7 +7,7 @@
     output_path: /tmp/calico.yml
     rules: "{{ kubernetes_cni_calico_manifest_mods }}"
 
-- name: install CNI netowrking
+- name: install CNI networking
   command: "/usr/bin/kubectl apply -f {{ item }}"
   run_once: True
   delegate_to: "{{ groups['masters'][0] }}"

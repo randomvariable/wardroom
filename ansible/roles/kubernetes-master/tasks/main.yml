@@ -12,12 +12,12 @@
   register: kubeadm_apiserver_manifest
 
 - name: open api server port
-  firewalld:
-    port: 6443/tcp
-    permanent: yes
-    state: enabled
-    immediate: True
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  include_role:
+    name: kubernetes-host-firewall
+  vars:
+    kubernetes_host_firewall_open_ports:
+      - port: 6443
+        proto: tcp
 
 - include_tasks: install.yml
   when: wardroom_action == 'install'

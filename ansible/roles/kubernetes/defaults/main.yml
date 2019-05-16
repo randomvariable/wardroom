@@ -6,33 +6,11 @@ kubernetes_cni_version: '0.7.5-00'
 kubernetes_cri_tools_version: '1.12.0-00'
 kubernetes_enable_cached_images: False
 kubernetes_cached_images: []
-kubernetes_apt_key_url: 'https://packages.cloud.google.com/apt/doc/apt-key.gpg'
 kubernetes_apt_repo_string: "deb http://apt.kubernetes.io/ {{ ansible_distribution_release | kube_debian_distro_version }} main"
 kubernetes_yum_baseurl: 'https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64'
 kubernetes_install_upstream_gpgkey: True
+kubernetes_install_essential_pks_gpgkey: False
 kubernetes_yum_gpgkey: 'file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kubernetes file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kubernetes-packages'
 kubernetes_disable_swap: True
-# Enable this for Cilium
-kubernetes_enable_bpf_mount: False
 
-kubernetes_ipv6_stable_privacy: True
 
-kubernetes_kernel_modules:
-- tcp_bbr
-
-kubernetes_sysctls:
-- name: fs.file-max
-  value: "39693561"
-- name: fs.inotify.max_user_watches
-  value: "1048576"
-
-# Cloud network optimisations - all safe for AWS
-# Enable Explicit Congestion Notification for in and outbound traffic
-- name: net.ipv4.tcp_ecn
-  value: 1
-# Use optimistic IPV6 address allocation for faster container addressing
-# https://tools.ietf.org/html/rfc4429#section-2.1
-- name: net.ipv6.conf.default.use_optimistic
-  value: 1
-- name: net.ipv6.conf.default.optimistic_dad
-  value: 1

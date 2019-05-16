@@ -1,0 +1,24 @@
+- name: ensure firewalld is running
+  systemd:
+    name: firewalld
+    state: started
+    enabled: True
+
+- name: open ssh
+  firewalld:
+    port: "22"
+    permanent: yes
+    state: enabled
+    immediate: False
+  retries: 5
+  delay: 10
+
+- name: open port ranges
+  firewalld:
+    port: "{{ item.ports | regex_replace(':', '-')  }}/{{ item.proto }}"
+    permanent: yes
+    state: enabled
+    immediate: True
+  retries: 5
+  delay: 10
+  with_items: "{{ kubernetes_host_firewall_open_ports }}"

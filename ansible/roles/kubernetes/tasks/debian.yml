@@ -6,10 +6,26 @@
     owner: root
     group: root
     mode: 0644
+  when: kubernetes_install_upstream_gpgkey | bool
 
 - name: add kubernetes apt key
   apt_key:
     file: /etc/apt/import.gpg.d/APT-GPG-KEY-kubernetes
+  when: kubernetes_install_upstream_gpgkey | bool
+
+- name: copy GPG key for Essential PKS
+  copy:
+    src: "{{ role_path }}/files/etc/pki/rpm-gpg/RPM-GPG-KEY-essential-pks"
+    dest: "/etc/apt/import.gpg.d/APT-GPG-KEY-essential-pks"
+    owner: root
+    group: root
+    mode: 0644
+  when: kubernetes_install_essential_pks_gpgkey | bool
+
+- name: add kubernetes apt key
+  apt_key:
+    file: /etc/apt/import.gpg.d/APT-GPG-KEY-essential-pks
+  when: kubernetes_install_essential_pks_gpgkey | bool
 
 - name: add the kubernetes apt repo
   apt_repository:

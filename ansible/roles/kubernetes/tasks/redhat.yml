@@ -21,6 +21,21 @@
     - kubernetes-packages
   when: kubernetes_install_upstream_gpgkey | bool
 
+- name: copy Essential PKS GPG key
+  copy:
+    src: "{{ role_path }}/files/etc/pki/rpm-gpg/RPM-GPG-KEY-essential-pks"
+    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-essential-pks"
+    owner: root
+    group: root
+    mode: 0644
+  when: kubernetes_install_essential_pks_gpgkey | bool
+
+- name: add the Essential PKS yum repo key
+  rpm_key:
+    state: present
+    key: /etc/pki/rpm-gpg/RPM-GPG-KEY-essential-pks
+  when: kubernetes_install_essential_pks_gpgkey | bool
+
 - name: add the kubernetes yum repo
   yum_repository:
     name: kubernetes
@@ -46,3 +61,4 @@
   - "kubeadm-{{ kubernetes_version | kube_platform_version('RedHat') }}.*"
   - "kubectl-{{ kubernetes_version | kube_platform_version('RedHat') }}.*"
   - "kubernetes-cni-{{ kubernetes_cni_version | kube_platform_version('RedHat') }}.*"
+

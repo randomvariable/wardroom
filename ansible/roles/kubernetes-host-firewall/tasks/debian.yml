@@ -1,0 +1,12 @@
+- name: ensure ufw is running
+  systemd:
+    name: ufw
+    state: started
+    enabled: True
+
+- name: open port ranges
+  ufw:
+    rule: allow
+    port: "{{ item.ports | regex_replace('-', ':')  }}"
+    proto: "{{ item.proto }}"
+  with_items: "{{ kubernetes_host_firewall_open_ports }}"

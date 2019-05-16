@@ -1,24 +1,258 @@
 ---
-kubernetes_common_disable_swap: True
-kubernetes_disable_swap: "{{kubernetes_common_disable_swap}}"
-kubernetes_common_manage_etc_hosts: False
-kubernetes_common_api_fqdn: k8s.example.com
-kubernetes_common_api_ip: 10.10.10.3
-kubernetes_common_primary_interface: eth0
 
-# kubelet_extra_args is a dict of arg:value (ie. 'node-ip: 1.1.1.1' for '--node-ip=1.1.1.1')
-kubernetes_common_kubelet_extra_args: {}
-kubernetes_common_kubelet_env_vars: {}
-kubernetes_common_kubelet_config: {}
+kubernetes_common_profiling_enabled: False
+
+      # - name: "admission-control-config"
+      #   hostPath: "/etc/kubernetes/admission-control-config.yaml"
+      #   mountPath: "/etc/kubernetes/admission-control-config.yaml"
+      #   readOnly: true
+      #   pathType: FileOrCreate
+      # - name: "event-rate-limit"
+      #   hostPath: "/etc/kubernetes/event-rate-limit.yaml"
+      #   mountPath: "/etc/kubernetes/event-rate-limit.yaml"
+      #   readOnly: true
+      #   pathType: FileOrCreate
 
 kubernetes_common_kubeadm_config:
-  apiVersion: kubeadm.k8s.io/v1alpha3
+  apiVersion: kubeadm.k8s.io/v1beta1
   kind: ClusterConfiguration
-  kubernetesVersion: 1.13.5
+  apiServer:
+    timeoutForControlPlane: 4m0s
+    certSANs: "{{ kubernetes_common_api_ip | kube_lookup_hostname(kubernetes_common_api_fqdn, True) }}"
+    extraArgs:
+      profiling: "{{kubernetes_common_profiling_enabled}}"
+      feature-gates: "{{kubernetes_common_feature_gates_string}}"
+      encryption-provider-config: /etc/kubernetes/encryption-provider-config.yaml
+      admission-control-config-file: /etc/kubernetes/admission-control-config.yaml
+      enable-admission-plugins: EventRateLimit,AlwaysPullImages,PodSecurityPolicy,ResourceQuota,NodeRestriction,OwnerReferencesPermissionEnforcement,PersistentVolumeClaimResize,PodTolerationRestriction,StorageObjectInUseProtection
+      tls-cipher-suites: "{{kubernetes_common_cluster_tls_cipher_suites_string}}"
+    extraVolumes:
+    - name: "log"
+      hostPath: "/var/log/kubernetes"
+      mountPath: "/var/log/kubernetes"
+      readOnly: false
+      pathType: DirectoryOrCreate
   controlPlaneEndpoint: "{{ kubernetes_common_api_fqdn }}"
-  apiServerExtraArgs:
-    "endpoint-reconciler-type": "lease"
-  apiServerCertSANs: "{{ kubernetes_common_api_ip | kube_lookup_hostname(kubernetes_common_api_fqdn, True) }}"
-  etcd:
-    external:
-      endpoints: "{{ etcd_client_endpoints }}"
+  controllerManager:
+    extraArgs:
+      feature-gates: "{{kubernetes_common_feature_gates_string}}"
+      terminated-pod-gc-threshold: "1000"
+      profiling: "{{kubernetes_common_profiling_enabled}}"
+      tls-cipher-suites: "{{kubernetes_common_cluster_tls_cipher_suites_string}}"
+  networking:
+    dnsDomain: cluster.internal.randomvariable.co.uk
+    podSubnet: 172.16.0.0/13
+    serviceSubnet: 172.24.0.0/13
+  scheduler:
+    extraArgs:
+      feature-gates: "{{kubernetes_common_feature_gates_string}}"
+      profiling: "{{kubernetes_common_profiling_enabled}}"
+      tls-cipher-suites: "{{kubernetes_common_cluster_tls_cipher_suites_string}}"
+
+kubernetes_common_service_account_volume_token_projection_configuration:
+  enabled: False
+  cluster_configuration:
+    apiServer:
+      service-account-issuer: "{{kubernetes_common_api_ip | kube_lookup_hostname(kubernetes_common_api_fqdn, True)}}"
+      service-account-signing-key-file: "/etc/kubernetes/pki/sa.key"
+
+kubernetes_common_oidc_configuration:
+  enabled: False
+  cluster_configuration:
+    apiServer:
+      oidc-client-id: "replace_me"
+      oidc-issuer-url: "replace_me"
+      oidc-username-claim: "sub"
+      oidc-groups-claim: "groups"
+      oidc-username-prefix: "oidc:user:"
+      oidc-groups-prefix: "oidc:group:"
+
+kubernetes_common_etcd_external_configuration:
+  enabled: False
+  cluster_configuration:
+    etcd:
+      external:
+        endpoints: "{{ etcd_client_endpoints }}"
+
+kubernetes_common_kubelet_configuration:
+  apiVersion: kubelet.config.k8s.io/v1beta1
+  kind: KubeletConfiguration
+  cgroupDriver: systemd
+  eventRecordQPS: 0
+  readOnlyPort: 0
+  featureGates: "{{kubernetes_common_feature_gates}}"
+  protectKernelDefaults: true
+  tlsCipherSuites: "{{kubernetes_common_cluster_tls_cipher_suites}}"
+
+
+kubernetes_common_encryption_provider:
+  enabled: False
+  cluster_configuration:
+    apiServer:
+      extraVolumes:
+      - name: "kmsplugin"
+        hostPath: "/var/run/kmsplugin"
+        mountPath: "/var/run/kmsplugin"
+        readOnly: false
+        pathType: DirectoryOrCreate
+      - name: "encryption-provider"
+        hostPath: "/etc/kubernetes/encryption-provider-config.yaml"
+        mountPath: "/etc/kubernetes/encryption-provider-config.yaml"
+    encryption_provider_configuration:
+      kind: EncryptionConfiguration
+      apiVersion: apiserver.config.k8s.io/v1
+      resources:
+        - resources:
+          - secrets
+          providers:
+          - kms:
+              name: kms
+              endpoint: unix:///var/run/kmsplugin/socket.sock
+              cachesize: 255
+              timeout: 5s
+          - identity: {}
+
+
+kubernetes_common_auditing:
+  enabled: False
+  cluster_configuration:
+    apiServer:
+      extraArgs:
+        audit-dynamic-configuration: "true"
+        audit-log-path: /var/log/kubernetes/audit.log
+        audit-log-maxsize: "256"
+        audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
+        audit-log-maxbackup: "5"
+        runtime-config: "auditregistration.k8s.io/v1alpha1=true"
+      extraVolumes:
+      - name: "audit-policy"
+        hostPath: "/etc/kubernetes/audit-policy.yaml"
+        mountPath: "/etc/kubernetes/audit-policy.yaml"
+        readOnly: true
+        pathType: FileOrCreate
+  audit_policy_configuration:
+    apiVersion: audit.k8s.io/v1beta1
+    kind: Policy
+    rules:
+    # The following requests were manually identified as high-volume and low-risk,
+    # so drop them.
+    - level: None
+      users: ["system:kube-proxy"]
+      verbs: ["watch"]
+      resources:
+        - group: "" # core
+          resources: ["endpoints", "services", "services/status"]
+    - level: None
+      # Ingress controller reads `configmaps/ingress-uid` through the unsecured port.
+      # TODO(#46983): Change this to the ingress controller service account.
+      users: ["system:unsecured"]
+      namespaces: ["kube-system"]
+      verbs: ["get"]
+      resources:
+        - group: "" # core
+          resources: ["configmaps"]
+    - level: None
+      users: ["kubelet"] # legacy kubelet identity
+      verbs: ["get"]
+      resources:
+        - group: "" # core
+          resources: ["nodes", "nodes/status"]
+    - level: None
+      userGroups: ["system:nodes"]
+      verbs: ["get"]
+      resources:
+        - group: "" # core
+          resources: ["nodes", "nodes/status"]
+    - level: None
+      users:
+        - system:kube-controller-manager
+        - system:kube-scheduler
+        - system:serviceaccount:kube-system:endpoint-controller
+      verbs: ["get", "update"]
+      namespaces: ["kube-system"]
+      resources:
+        - group: "" # core
+          resources: ["endpoints"]
+    - level: None
+      users: ["system:apiserver"]
+      verbs: ["get"]
+      resources:
+        - group: "" # core
+          resources: ["namespaces", "namespaces/status", "namespaces/finalize"]
+    # Don't log HPA fetching metrics.
+    - level: None
+      users:
+        - system:kube-controller-manager
+      verbs: ["get", "list"]
+      resources:
+        - group: "metrics.k8s.io"
+    # Don't log these read-only URLs.
+    - level: None
+      nonResourceURLs:
+        - /healthz*
+        - /version
+        - /swagger*
+    # Don't log events requests.
+    - level: None
+      resources:
+        - group: "" # core
+          resources: ["events"]
+    # Secrets, ConfigMaps, and TokenReviews can contain sensitive & binary data,
+    # so only log at the Metadata level.
+    - level: Metadata
+      resources:
+        - group: "" # core
+          resources: ["secrets", "configmaps"]
+        - group: authentication.k8s.io
+          resources: ["tokenreviews"]
+      omitStages:
+        - "RequestReceived"
+    # Get responses can be large; skip them.
+    - level: Request
+      verbs: ["get", "list", "watch"]
+      resources:
+        - group: "" # core
+        - group: "admissionregistration.k8s.io"
+        - group: "apiextensions.k8s.io"
+        - group: "apiregistration.k8s.io"
+        - group: "apps"
+        - group: "authentication.k8s.io"
+        - group: "authorization.k8s.io"
+        - group: "autoscaling"
+        - group: "batch"
+        - group: "certificates.k8s.io"
+        - group: "extensions"
+        - group: "metrics.k8s.io"
+        - group: "networking.k8s.io"
+        - group: "policy"
+        - group: "rbac.authorization.k8s.io"
+        - group: "settings.k8s.io"
+        - group: "storage.k8s.io"
+      omitStages:
+        - "RequestReceived"
+    # Default level for known APIs
+    - level: RequestResponse
+      resources:
+        - group: "" # core
+        - group: "admissionregistration.k8s.io"
+        - group: "apiextensions.k8s.io"
+        - group: "apiregistration.k8s.io"
+        - group: "apps"
+        - group: "authentication.k8s.io"
+        - group: "authorization.k8s.io"
+        - group: "autoscaling"
+        - group: "batch"
+        - group: "certificates.k8s.io"
+        - group: "extensions"
+        - group: "metrics.k8s.io"
+        - group: "networking.k8s.io"
+        - group: "policy"
+        - group: "rbac.authorization.k8s.io"
+        - group: "settings.k8s.io"
+        - group: "storage.k8s.io"
+      omitStages:
+        - "RequestReceived"
+    # Default level for all other requests.
+    - level: Metadata
+      omitStages:
+        - "RequestReceived"
